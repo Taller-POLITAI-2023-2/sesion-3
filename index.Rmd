@@ -1,0 +1,435 @@
+---
+title: "**<b style = 'color : #E34B2A;'>Sesión 3: Regresión Lineal</b>**"
+subtitle: 'Taller de Estadística aplicada en R para ciencias sociales - POLITAI'
+date: "2023-11-24"
+date-modified: ''
+author: "Joel Ccallocunto \n **[@luccemhu](https://github.com/luccemhu)** \n a20196510@pucp.edu.pe"
+theme:
+  light: flatly
+  dark: darkly
+toc: true
+always_allow_html: true
+format:
+  html:
+    mainfont: Georgia
+    self-contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r,echo=FALSE, out.width="65%",fig.align="center"}
+knitr::include_graphics("./images/politai.jpg") 
+```
+
+Introducción a la regresión simple en R
+============================================================
+
+## **I. Análisis de regresión simple: ideas clave**
+
+Técnica estadística que predice el valor de una variable con los valores de otra. La regresión lineal es un método útil para predecir una respuesta cuantitativa **Y** partiendo de una sola variable predictora **X**, asumiendo que hay una relación aproximadamente lineal entre X e Y. Matemáticamente, esta relación lineal se representa como
+
+$Y = a + bX + E$
+
+-   Y = variable dependiente o explicada. Variable cuyos valores se desea predecir o resumir. Un modelo de regresión lineal tiene como variable dependiente una variable numérica
+
+-   a = Constante: ordenada en el origen, valor esperado de "Y" cuando X=0
+
+-   b = Pendiente: mide el cambio de la variable "Y" por cada unidad de cambio de "X". Su magnitud sirve para predecir en cuánto aumentará "y" cada vez que "x" se incremente en una unidad.Su signo puede ser positivo o negativo, y en esto la interpretación coincide con la correlación.
+
+-   X = variable utilizada para predecir el valor de la variable dependiente. También se denomina variable predictora o variable explicativa. Las variables explicativas que son parte del modelo suelen ser numéricas o intervalares; sin embargo, es posible incorporar variables explicativas ordinales o categóricas.
+
+-   E = Corresponde a las desviaciones de los valores verdaderos de Y con respecto a los valores esperados de "Y" (diferencia entre lo observado y estimado por el modelo). Asumimos que es independiente de "X".
+
+La relación entre las variables depende de la pendiente:
+
+-   Si b es positivo, Y aumenta cuando X aumenta.Es una relación directa / positiva.
+
+-   Si b es negativo, Y aumenta cuando X disminuye.Es una relación inversa / negativa.
+
+-   Si b es cero.Y no cambia cuando X varía.No existe relación entre las variables.
+
+Asimismo, con el método de la regresión lineal se puede responder las siguientes preguntas:
+
+- Analizar si hay una **asociación** entre las variables mediante un test de independencia estadística.
+
+- Analizar la **dirección** de la asociación (directa o inversa).
+
+- Evaluar la **fuerza** de la asociación usando una medida de asociación llamada *correlación de Pearson*.
+
+- Estimar una ecuación de regresión que **“predice”** los valores de la variable dependiente para valores de la variable independiente.
+
+
+
+## **Pasos para la regresión lineal simple**
+
+-   **Paso 1**: Analizar la asociación entre las variables de insumo: Diagrama de dispersión y correlación bivariada
+
+-   **Paso 2**: ¿Nuestro modelo es válido?: TABLA DE COEFICIENTES
+
+-   **Paso 3**: ¿Qué tanto explica mi modelo?: COEFICIENTE DE DETERMINACIÓN -- R2
+
+-   **Paso 4**: ¿Cuáles son los parámetros?: TABLA DE COEFICIENTES
+
+-   **Paso 5**: Construir la ecuación y predecir
+
+```{r}
+## Cargamos los paquetes que usaremos
+
+library(ggplot2) #para hacer gráficos
+library(Hmisc)   #para correlación
+
+#library(nortest) #para pruebas de normalidad
+```
+
+## **II. Aplicación práctica**
+
+En esta sesión vamos a trabajar con la base de datos (Competitividad_reg), subset del Índice de Competitividad Regional (INCORE) que tiene un amplio grupo de variables que miden distintas características a nivel regional. Ha sido levantada de manera regular por el Instituto Peruano de Economía (IPE). En particular, el objetivo de este índice es dar a conocer los avances en el desarrollo económico y social de las regiones del Perú. Ello resulta fundamental para la discusión y la toma de decisiones de políticas públicas que impulsen el desarrollo a nivel regional, más aún en un contexto particularmente adverso a raíz de la crisis sanitaria a nivel mundial.
+
+Más información del estudio: https://incoreperu.pe/portal/index.php/databank
+
+
+Asimismo, se ha agregado datos de la sala situacional del MINSA a diciembre 2020 donde se observa el número de contagios COVID 19, fallecidos y la tasa de casos por 100k hab en el país con la finalidad de medir el efecto de una variable explicativa sobre esta dependiente o explicada.
+
+Si bien existen varios factores asociados al número de casos de contagio por COVID-19 en las regiones, a continuación analizaremos el efecto del presupuesto público per cápita en el número de contagios de COVID-19. Para  ello, vamos a calcular un modelo de regresión simple donde la variable dependiente es la tasa de contagios COVID-19 (casos_100k) y la variable independiente es el presupuesto público per cápita (var4).Lo analizaremos para el año 2020.
+
+Variables:
+
+-   (casos_100k): Tasa de contagios de covid19 - casos por cada 100k personas (v. dependiente)
+-   (var4): Presupuesto público per cápita (v. independiente)
+
+  + Carguemos la data:
+```{r}
+#setwd("")
+
+library(rio)
+data = import("./DF/competitividad_reg.sav") # cada caso es una región
+```
+
+  + Exploremos la BD: 
+```{r}
+#str(data)
+#names(data)
+
+#class(data) 
+#head(data)
+#table(data$var4)
+```
+
+Mejor ver caso por caso
+```{r}
+str(data$var4)
+```
+```{r}
+str(data$casos_100k)
+```
+
+## **III. Impacto del presupuesto público per cápita en la tasa de contagios por COVID-19**
+
+  - Paso 1: Analizar la asociación entre las variables de insumo: Diagrama de dispersión y correlación bivariada
+
+### REPASEMOS LO HECHO EN LA SESIÓN ANTERIOR:
+
+Paso 2: ¿Nuestro modelo es válido?: TABLA ANOVA (MEJOR TABLA DE COEFICIENTES)
+============================================================
+
+RLM: TABLA ANOVA  - Estadístico F
+RLS: Tabla coeficiente - Prueba T
+
+Para responder a esta pregunta debemos analizar la TABLA DE ANOVA. En esta tabla se analiza el modelo en su conjunto y se realiza una prueba de hipótesis. El estadístico F permite contrastar si existe o no relación significativa entre las variables (¿hay relación lineal?)
+
+Las hipótesis para la prueba F son las siguientes:
+
+-   H0: El modelo de regresión no es válido
+
+-   H1: El modelo de regresión es válido (variable X aporta al modelo)
+
+
+Relación lineal: Esta probable relación entre estas dos variables se resume/simplifica mediante una aproximación lineal. Es decir, mediante una recta de aproximación.
+
+*NOTA: EN EL MODELO SE COLOCA PRIMERO LA VARIABLE DEPENDIENTE, LUEGO LA INDEPENDIENTE*
+casos_100k - VD
+var4 - VI
+
+```{r}
+modelo1 <- lm(casos_100k ~ var4, data = data) 
+# si se crea otra data --> data = data2
+#modelo1 <- lm(data$casos_100k~data$var4) # Otra forma de lm
+
+#anova(modelo1)
+summary(modelo1) # También podemos leer el F-statistic, el Adjusted R-squared...
+# MEJOR USAR ESTE EN LUGAR DE anova
+``` 
+
+INTERPRETACIÓN:
+
+  + Al revisar el p-value (0.0002964), el cual es menor/igual a 0.05, por tanto, rechazamos la H0. El presupuesto público per cápita (V.I.) tiene impacto significativo en la tasa de contagios por COVID-19 (D.V.). 
+  
+  + Así se determina que el modelo1 es válido para predecir la variable dependiente "tasa de contagios por COVID-19" (casos_100k) a partir de la variable independiente "presupuesto público per cápita" (var4 ). Es decir, existe una relación lineal entre ambas variables.
+
+
+Paso 3: ¿Qué tanto explica mi modelo?: COEFICIENTE DE DETERMINACIÓN --> R2
+============================================================
+Para responder a esta pregunta debemos ver el R2, más conocido como el Coeficiente de Determinación. El R2 mide la "bondad de ajuste" del modelo de regresión a los datos analizados. *Nos indica qué tan bien la recta de regresión es capaz de predecir los valores de Y.* 
+
+Podemos interpretarlo como el porcentaje de la variabilidad total de la variable dependiente que es explicada por la variable independiente. --> si tuviesemos más variables: el porcentaje de la variabilidad total de la variable dependiente es explicada por nuestro modelo. pues el modelo tiene más de un predictor (lo que hace que sea una interpretacion correcta)
+
+Los valores van de 0 a 1. Mientras más cercano esté el R2 a 1, mayor será la variabilidad explicada. El R2 es un indicador de ajuste del modelo.
+
+Ejemplo: un R2 de 0.10 explicará un 10% de la variabilidad de Y, podríamos decir que es muy poco. En cambio, un R2 de 0.90 explicará un 90%, por lo que podemos concluir que es un buen modelo.
+
+```{r}
+summary(modelo1) #leemos el Adjusted R-squared
+```
+
+INTERPRETACIÓN: 
+
+ - De acuerdo a los resultados, se presenta un Rcuadrado ajustado de 0.45 (45%), esto sugiere que el 44,6% de la variabilidad de la tasa de contagios por COVID-19 es explicada/captada por el presupuesto público per cápita.
+
+
+
+
+Paso 4: ¿Cuáles son los parámetros?: TABLA DE COEFICIENTES
+============================================================
+
+Para responder a esta pregunta debemos analizar la Tabla de Coeficientes. En esta tabla se calcula los coeficientes que irán en la ecuación por cada una de las variables explicativas añadidas en el modelo.
+
+Luego de ello, se realiza una prueba de hipótesis (T) para validar nuestros coeficientes (al igual que validamos anteriormente el modelo en su conjunto). Esta prueba nos permitirá saber si estos coeficientes entran o no en la ecuación final.
+
+Las hipótesis para la prueba T es la siguiente:
+
+-   H0: La variable X1 no aporta al modelo propuesto (b igual a 0)
+
+-   H1: La variable X1 aporta al modelo propuesto (b diferente de 0)
+
+b -> pendiente 
+
+```{r}
+summary(modelo1)#leemos Coefficients
+```
+
+Como el p-value (es menor igual a) \< 0.05 entonces rechazamos la H0 y afirmamos la H1, es decir, concluimos que el b de la variable explicativa (presupuesto público per cápita) es distinto a cero, y por tanto sí aporta al modelo propuesto.
+
+
+**Paso 5: Construir la ecuación y predecir**
+============================================================
+
+Entonces nuestra ecuación final de la recta sería:
+
+```{r}
+modelo1$coefficients
+
+summary(modelo1)
+```
+
+Los primeros datos a analizar están en la columna “Estimate”. Estos datos definen la ecuación de la recta. Según estos datos se tendría lo siguiente:
+ 
+Ŷ = -650.0233+0.8596∗X 
+
+Mi modelo se presenta de la siguiente manera. Y es la tasa de contagios por cada 100 mil habitantes es igual a -650.023+3+0.8596∗X.(por el valor que tome X)
+
+Donde:
+
+-   X = Presupuesto público per cápita - var4 (independiente)
+-   Y = Tasa de contagios por COVID-19 - casos_100k (dependiente)
+
+Esa ecuación crea una línea recta en el diagrama de dispersión que representa la relación entre ambas variables y además indica que el cambio esperado en nuestra variable dependiente (tasa de contagios por COVID-19) por cada cambio de una unidad en nuestra variable independiente (presupuesto público per cápita). Así, con esta ecuación se puede estimar el valor de Y para cualquier valor de X.
+
+La relación entre dos variables cuantitativas se modela mediante una recta de aproximación.Finalmente, graficamos dicha recta:
+
+```{r}
+ggplot(data, aes(x = var4, y = casos_100k)) +
+  geom_point(colour = "red",
+             size = 3,
+             alpha = 1 / 2) +
+  xlab("Presupuesto público per cápita") +
+  ylab("Tasa de contagios por COVID-19") +
+  ggtitle("Presupuesto público per cápita \ Tasa de contagios por COVID-19") +
+  theme_light() + geom_smooth(method = "lm",
+                              se = FALSE) # Se eliminan las bandas de confianza (se = standard error)
+```
+
+**En resumen** En una regresión lineal primero se observa el p value, luego cuánto explica (R2 ajustado), la tabla de coeficientes, y finalmente añadir y graficar la ecuación final de la recta. 
+
+EJEMPLO:
+
+Ŷ  =   -650.0233+0.8596 (X)
+
+SI REEMPLAZAMOS 2000 
+
+```{r}
+-650.0233 + (0.8596 * 2000)
+```
+Para una región que tiene 2000 soles de presupuesto público per cápita, se estima que tendrá 1,069 contagios por cada 100 mil habitantes.
+
+
+EJEMPLO REAL DE LA BASE DE DATOS:
+
+EL VALOR PREDICHO
+```{r}
+-650.0233 + (0.8596 * 5924.187)
+```
+Para la región Amazonas que tiene 5924.187 soles de presupuesto público per cápita, se estima que tendrá 1,069 contagios por cada 100 mil habitantes.
+
+
+PARA EXPLICAR UN CASO ESPECIFICO:
+```{r}
+library(dplyr)
+
+#Amazonas=filter(base de datos, variable=="filtrar los casos")
+
+Amazonas = filter(data, region == "Amazonas") %>%
+  select(., var4) # ., -> dice que es la misma base de datos
+Amazonas
+```
+
+
+## **PRIMERA BASE DE DATOS: ELECCIONES PERÚ (CASTILLO)**
+  
+  - IDH Y CASTILLO:
+```{r}
+library(rio)
+dataVOTO = import("PVotos_CirElectoral_idh.xlsx")
+
+#names(dataVOTO)
+#str(dataVOTO)
+```
+
+**Modelo 1**
+============================================================
+```{r}
+modelo1 <- lm(VotosV_Castillo ~ IDH, data = dataVOTO)
+summary(modelo1)
+```
+
+INTERPRETACION: 
+
+## **1. ¿Existe una relación de depencia entre las variables? ¿Y depende de X1?**
+
+  - **H0: La variable independiente (`IDH`) no tiene efecto sobre la variable dependiente (`VotosV_Castillo`)**
+
+  + Al revisar el p-value (0.008096), el cual es menor a 0.05, rechazamos la H0. Por lo que a un 95% de confianza, el (`IDH`) tiene **impacto significativo** / **sí tiene un efecto** / **sí influye** en (`VotosV_Castillo`). Así se determina que el "modelo1" es válido para predecir el porcentaje de votos válidos a Castillo en los departamentos del país a partir del IDH; es decir, existe una relación lineal entre ambas variables.
+     
+## **2. ¿Cuánto explica el modelo?**
+
+  + La mejor recta graficada del "modelo1" de regresión lineal ayuda a predecir el 22% de la variabilidad total de la variable (`VotosV_Castillo`) explicada por la variable (`IDH`). Por lo que podemos concluir que es un modelo bajo.
+
+## **3. ¿Cómo Y depende de X 1?**
+
+COEFICIENTE:
+
+  + El porcentaje de votos válidos de Castillo va a ser igual a 0.7566 + (-0.9311)*IDH. En ese sentido, cuando el (`IDH`) se incrementa en una unidad, el porcentaje de votos válidos de Castillo **disminuye** / **se reduce** en 0.9311 puntos porcentuales / 93%.
+
+INTERCEPTO:
+
+  + Cuando IDH toma el valor 0, el porcentaje de votos válidos para Castillo sería 0.7566.
+
+  + Y = 0.7566 +(-0.9311)*X
+
+  + Y = 0.7566 +(-0.9311)*IDH
+
+```{r}
+summary(dataVOTO$IDH)
+```
+  + ¿Qué sucede con la región que tiene el min de IDH? remplazar 0.3838 en --> Y= 0.7566 + (-0.9311)*IDH
+```{r}
+Y1 = 0.7566 + (-0.9311)*0.3838
+Y1
+```
+ 
+  + Porcentaje de voto a castillo al 40% 
+
+## **Gráfica**
+```{r,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+#plot(VotosV_Castillo ~ IDH, dataVOTO)
+#abline(modelo1, col = "red")
+
+# GRÁFICO FACHEREX:
+library(ggplot2)
+library(hrbrthemes)
+ggplot(dataVOTO, aes(x=IDH, y=VotosV_Castillo, color="")) +
+  geom_point(size = 6,
+                     alpha = 1/2) +  xlab("IDH") +  ylab("Votos por Castillo") +
+  ggtitle("IDH \ Votos por Castillo") +
+  theme_light() + geom_smooth(method="lm", 
+                             se = FALSE) +  # Se eliminan las bandas de confianza (se = standard error) 
+  theme_ipsum()
+```
+
+INTERPRETACIÓN:
+
+  + Las regiones con mayor IDH votaron menos por castillo.
+
+
+**SEGUNDA BASE DE DATOS: ELECCIONES COLOMBIA (PETRO)**
+============================================================
+  - IDH Y PETRO:
+```{r}
+#getwd()
+#setwd("")
+
+library(rio)
+dataCOLOM = import("Colombia2022.xlsx")
+
+#names(dataCOLOM)
+#str(dataCOLOM)
+```
+
+```{r}
+str(dataCOLOM$`Petro (%)`)
+str(dataCOLOM$`IDH-2019`)
+```
+**Modelo 2**
+============================================================
+```{r}
+modelo2 <- lm(`Petro (%)` ~ `IDH-2019`, data = dataCOLOM)
+summary(modelo2)
+```
+
+## INTERPRETACION:
+
+  - **H0: La variable independiente (`IDH-2019`) no tiene efecto sobre la variable dependiente (`Petro (%)`)**
+
+  + Al revisar el p-value (0.003354), el cual es menor a 0.05, rechazamos la H0. Por lo que a un 95% de confianza el (`IDH-2019`) tiene impacto significativo en (`Petro (%)`). Así se determina que el modelo2 es válido para predecir el porcentaje de votos válidos a Petro en las regiones del país colombiano a partir del IDH. Es decir, existe una relación lineal entre ambas variables.
+
+  + La mejor recta graficada del modelo2 de regresión lineal ayuda a predecir el 24% de la variabilidad total de la variable (`Petro (%)`) explicada por la variable (`IDH-2019`). Por lo que podemos concluir que es un modelo bajo.
+
+COEFICIENTE:
+  
+  + El porcentaje de votos válidos de Petro va a ser igual a 2.0028 + (-2.1193)*`IDH-2019`. En ese sentido, cuando el `IDH-2019` se incrementa en una unidad, el porcentaje de votos válidos de Petro disminuye/se reduce en 2.1193 puntos porcentuales.
+
+INTERCEPTO:
+
+  + Cuando IDH toma el valor 0, el porcentaje de votos válidos para Petro sería 2.0028.
+
+```{r}
+summary(dataCOLOM$`IDH-2019`)
+```
+
+```{r}
+Y2 = 2.0028 +(-0.9311*0)
+Y2
+```
+
+## GRÁFICA
+```{r,message=FALSE,warning=FALSE,eval=TRUE,fig.show='hold',fig.width=9.5,fig.height=5.55, fig.align="center"}
+#plot(`Petro (%)` ~ `IDH-2019`, dataCOLOM)
+#abline(modelo2, col = "red")
+
+# GRÁFICO FACHEREX:
+library(ggplot2)
+ggplot(dataCOLOM, aes(x=`IDH-2019`, y=`Petro (%)`)) +
+  geom_point(colour="red", size = 3,
+                     alpha = 1/2) + xlab("IDH 2019") + ylab("Votos por Petro") +
+  ggtitle("IDH 2019 \ Votos por Petro") +
+  theme_light()+ geom_smooth(method="lm", 
+                             se = FALSE) # Se eliminan las bandas de confianza (se = standard error)
+```
+
+  + Del mismo modo las regiones con mayor IDH votaron menos por Petro.
+
+
+
+
+
